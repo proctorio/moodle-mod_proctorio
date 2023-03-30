@@ -1,20 +1,56 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# Proctorio services
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+This is a collection of services that can be used to integrate Proctorio into your LTI application.
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+## Install this plugin
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+1. Clone this repository into the `local` directory of your Moodle installation.
+2. Go to `Site administration > Notifications` and follow the on-screen instructions to complete the installation.
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+## Execute web service requests
+
+To execute a web service request, you need to send a GET or POST request to the following URL:
+
+    https://yourmoodle.com/local/proctorio/users.php
+
+The request must contain the following parameters:
+
+* `courseid`: The ID of the course you want to get the enrolled users from
+* `teacherid`: The ID of the teacher you want to get the enrolled users from. This user must have the `moodle/course:viewparticipants` capability in the course.
+
+## Return values
+
+The web service will return a JSON object with the following structure:
+
+
+```json	
+
+   [
+        {
+            "id": 2,
+            "firstname": "Admin",
+            "lastname": "User"
+        },
+        {
+            "id": 3,
+            "firstname": "Test",
+            "lastname": "User"
+        }
+    ]
+```
+
+If an error occurs, the web service will return a JSON object with the following structure:
+
+```json
+    {
+        "error": true,
+        "exception": {
+            "message": "[error message]",
+            "errorcode": "[internal code]",
+            "backtrace": "[Error details (only in debug mode)]",
+            "link": "[link error (only in debug mode)]",
+            "moreinfourl": "[Url info (only in debug mode)]",
+            "debuginfo": "[Debug info (only in debug mode)]"
+        }
+    }
+```
