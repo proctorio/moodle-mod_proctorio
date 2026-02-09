@@ -23,20 +23,24 @@
  */
 
 require_once('../../config.php');
-require_once('lib.php');
+require_once($CFG->libdir . '/gradelib.php');
+require_once($CFG->dirroot . '/local/proctorio/classes/attempt_fetcher.php');
 
 require_login();
-
 $context = context_system::instance();
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/local/proctorio/users.php'));
-$PAGE->set_heading("roster");
+$PAGE->set_url(new moodle_url('/local/proctorio/quizattemptinfo.php'));
+$PAGE->set_heading("quizinfo");
 
 // Headers for JSON response.
 header('Content-Type: application/json');
 
 try {
-    global $DB;
+    // Fetch parameters.
+    global $USER, $DB;
+    $userid = $USER->id;
+    $quizid  = required_param('cmid', PARAM_INT);
+    $modname = optional_param('modname', '', PARAM_PLUGIN);
 
     if ($_SERVER['HTTP_X_REQUESTED_WITH'] != 'XMLHttpRequest' || !isloggedin()) {
         http_response_code(404);
@@ -44,6 +48,16 @@ try {
         echo json_encode([
             'status' => 'error',
             'message' => 'You must be loggedin.',
+        ]);
+        exit;
+    }
+
+    // Validate user exists.
+    if (!core_user::is_real_user($userid)) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid user',
         ]);
         exit;
     }
@@ -58,43 +72,19 @@ try {
         exit;
     }
 
-    $courseid = required_param('courseid', PARAM_INT);
-    $course = $DB->get_record('course', ['id' => $courseid]);
+    // Use attempt_fetcher class to get data.
+    $attempt = \local_proctorio\attempt_fetcher::get_last_attempt($userid, $quizid, $modname);
 
-    if (!$course) {
+    if (!$attempt) {
         http_response_code(404);
-        echo json_encode(['status' => 'error', 'message' => 'Course not found.']);
+        echo json_encode(['status' => 'error', 'message' => 'No attempt found']);
         exit;
     }
 
-    $context = context_course::instance($courseid);
-
-    $users = get_enrolled_users($context);
-
-    if (empty($users)) {
-        // No users found.
-        http_response_code(200);
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'No users enrolled in this course.',
-            'data' => [],
-        ]);
-        exit;
-    }
-
-    $roster = [];
-    foreach ($users as $user) {
-        $roster[] = [
-            'id' => $user->id,
-            'fullname' => fullname($user),
-            'email' => $user->email,
-        ];
-    }
     http_response_code(200);
     echo json_encode([
-        'status' => 'success',
-        'message' => 'Enrolled users fetched successfully.',
-        'data' => $roster,
+        'status' => "success",
+        'data' => $attempt,
     ]);
     exit;
 

@@ -1,0 +1,169 @@
+============================================================
+READY-TO-USE SQL QUERY TEMPLATES
+============================================================
+
+Copy and modify these templates for your custom quiz types.
+Replace [brackets] with your actual table/column names.
+
+============================================================
+TEMPLATE 1: Standard Pattern
+============================================================
+[modname]|SELECT id, [status_col] AS attempt_status, [attempt_col] AS attempt_number FROM {[table_name]} WHERE [userid_col] = :userid AND [quizid_col] = :quizid ORDER BY timemodified DESC LIMIT 1
+
+Example:
+customquiz|SELECT id, status AS attempt_status, attempt AS attempt_number FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+
+
+============================================================
+TEMPLATE 2: No Attempt Number Column (Count Attempts)
+============================================================
+[modname]|SELECT id, [status_col] AS attempt_status, (SELECT COUNT(*) FROM {[table_name]} WHERE [userid_col] = :userid AND [quizid_col] = :quizid) AS attempt_number FROM {[table_name]} WHERE [userid_col] = :userid AND [quizid_col] = :quizid ORDER BY timemodified DESC LIMIT 1
+
+Example:
+myquiz|SELECT id, state AS attempt_status, (SELECT COUNT(*) FROM {myquiz_attempts} WHERE userid = :userid AND instance = :quizid) AS attempt_number FROM {myquiz_attempts} WHERE userid = :userid AND instance = :quizid ORDER BY timemodified DESC LIMIT 1
+
+
+============================================================
+TEMPLATE 3: Different Column Names
+============================================================
+[modname]|SELECT id, [status_col] AS attempt_status, [attempt_col] AS attempt_number FROM {[table_name]} WHERE [userid_col] = :userid AND [quizid_col] = :quizid ORDER BY [time_col] DESC LIMIT 1
+
+Example (uid instead of userid, examid instead of quizid):
+examquiz|SELECT id, state AS attempt_status, trynum AS attempt_number FROM {examquiz_tries} WHERE uid = :userid AND examid = :quizid ORDER BY created DESC LIMIT 1
+
+
+============================================================
+TEMPLATE 4: Numeric Status (Convert to Text)
+============================================================
+[modname]|SELECT id, CASE [status_col] WHEN 0 THEN 'inprogress' WHEN 1 THEN 'finished' ELSE 'abandoned' END AS attempt_status, [attempt_col] AS attempt_number FROM {[table_name]} WHERE [userid_col] = :userid AND [quizid_col] = :quizid ORDER BY timemodified DESC LIMIT 1
+
+Example:
+numquiz|SELECT id, CASE status WHEN 0 THEN 'inprogress' WHEN 1 THEN 'finished' ELSE 'abandoned' END AS attempt_status, attempt AS attempt_number FROM {numquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+
+
+============================================================
+TEMPLATE 5: Status Based on Timestamp
+============================================================
+[modname]|SELECT id, CASE WHEN [timefinish_col] > 0 THEN 'finished' ELSE 'inprogress' END AS attempt_status, [attempt_col] AS attempt_number FROM {[table_name]} WHERE [userid_col] = :userid AND [quizid_col] = :quizid ORDER BY [timestart_col] DESC LIMIT 1
+
+Example:
+timequiz|SELECT id, CASE WHEN timefinish > 0 THEN 'finished' ELSE 'inprogress' END AS attempt_status, attempt AS attempt_number FROM {timequiz_attempts} WHERE userid = :userid AND quiz = :quizid ORDER BY timestart DESC LIMIT 1
+
+
+============================================================
+TEMPLATE 6: With Additional Filters
+============================================================
+[modname]|SELECT id, [status_col] AS attempt_status, [attempt_col] AS attempt_number FROM {[table_name]} WHERE [userid_col] = :userid AND [quizid_col] = :quizid AND [status_col] != 'abandoned' ORDER BY timemodified DESC LIMIT 1
+
+Example (exclude abandoned attempts):
+cleanquiz|SELECT id, state AS attempt_status, attempt AS attempt_number FROM {cleanquiz_attempts} WHERE userid = :userid AND quizid = :quizid AND state != 'abandoned' ORDER BY timemodified DESC LIMIT 1
+
+
+============================================================
+TEMPLATE 7: Join Multiple Tables
+============================================================
+[modname]|SELECT a.id, a.[status_col] AS attempt_status, a.[attempt_col] AS attempt_number FROM {[main_table]} a WHERE a.[userid_col] = :userid AND a.[quizid_col] = :quizid ORDER BY a.timemodified DESC LIMIT 1
+
+Example (join with user table if needed):
+joinquiz|SELECT a.id, a.status AS attempt_status, a.attempt AS attempt_number FROM {joinquiz_attempts} a WHERE a.userid = :userid AND a.quizid = :quizid ORDER BY a.timemodified DESC LIMIT 1
+
+
+============================================================
+QUICK REFERENCE: Common Column Names
+============================================================
+
+USER ID COLUMNS:
+- userid
+- user_id
+- uid
+- user
+- student_id
+- studentid
+
+QUIZ ID COLUMNS:
+- quiz
+- quizid
+- quiz_id
+- instance
+- examid
+- exam_id
+- assessment_id
+
+STATUS COLUMNS:
+- state
+- status
+- attemptstate
+- attempt_state
+- completion_status
+- quiz_state
+
+ATTEMPT NUMBER COLUMNS:
+- attempt
+- attemptnum
+- attemptnumber
+- attempt_number
+- trynum
+- try_number
+
+TIME COLUMNS:
+- timemodified
+- timecreated
+- created
+- updated
+- timestart
+- timeend
+- timefinish
+
+
+============================================================
+MULTI-QUIZ CONFIGURATION EXAMPLE
+============================================================
+
+# Custom Quiz Type 1
+customquiz|SELECT id, status AS attempt_status, attempt AS attempt_number FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+
+# Exam Quiz Type
+examquiz|SELECT id, state AS attempt_status, trynum AS attempt_number FROM {examquiz_tries} WHERE uid = :userid AND examid = :quizid ORDER BY created DESC LIMIT 1
+
+# Advanced Quiz (no attempt number)
+advquiz|SELECT id, status AS attempt_status, (SELECT COUNT(*) FROM {advquiz_attempts} WHERE userid = :userid AND instance = :quizid) AS attempt_number FROM {advquiz_attempts} WHERE userid = :userid AND instance = :quizid ORDER BY timemodified DESC LIMIT 1
+
+# Another Custom Type
+myquiz|SELECT id, state AS attempt_status, attempt AS attempt_number FROM {myquiz_attempts} WHERE student_id = :userid AND quiz_id = :quizid ORDER BY updated DESC LIMIT 1
+
+
+============================================================
+TESTING YOUR QUERY
+============================================================
+
+1. Find your table:
+   SHOW TABLES LIKE '%attempt%';
+
+2. Check structure:
+   DESCRIBE mdl_yourquiz_attempts;
+
+3. Test with real data:
+   SELECT * FROM mdl_yourquiz_attempts WHERE userid = 2 LIMIT 5;
+
+4. Build your query:
+   SELECT id, status AS attempt_status, attempt AS attempt_number 
+   FROM mdl_yourquiz_attempts 
+   WHERE userid = 2 AND quizid = 5 
+   ORDER BY timemodified DESC 
+   LIMIT 1;
+
+5. Convert for Moodle (use {curly_braces} and :placeholders):
+   yourquiz|SELECT id, status AS attempt_status, attempt AS attempt_number FROM {yourquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+
+
+============================================================
+NOTES
+============================================================
+
+✓ Always use :userid and :quizid placeholders
+✓ Always include AS attempt_status and AS attempt_number aliases
+✓ Use {tablename} syntax (curly braces, no mdl_ prefix)
+✓ Include ORDER BY and LIMIT 1 for best results
+✓ Test your query in SQL first with real values
+✓ Lines starting with # are comments
+✓ One line per quiz type
