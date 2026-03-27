@@ -1,0 +1,161 @@
+===============================================================================
+  QUICK START GUIDE - Custom Quiz SQL Queries
+===============================================================================
+
+WHAT YOU NEED TO KNOW
+---------------------
+Standard 'quiz' and 'adaptivequiz' work automatically - NO configuration needed!
+Only configure custom quiz types that aren't automatically supported.
+
+CONFIGURATION FORMAT
+--------------------
+modname|SELECT id, [status] AS attempt_status, [attempt] AS attempt_number FROM {table} WHERE [userid_col] = :userid AND [quizid_col] = :quizid ORDER BY timemodified DESC LIMIT 1
+
+
+STEP 1: FIND YOUR DATABASE INFO
+--------------------------------
+Run these SQL queries in phpMyAdmin or your database tool:
+
+A) Find your quiz attempt table:
+   SHOW TABLES LIKE '%attempt%';
+   
+B) Check table structure:
+   DESCRIBE mdl_yourquiz_attempts;
+   
+C) Test with real data:
+   SELECT * FROM mdl_yourquiz_attempts WHERE userid = 2 LIMIT 1;
+
+
+STEP 2: IDENTIFY COLUMNS
+-------------------------
+Look for these columns in your table:
+
+✓ USER ID column (usually: userid, user_id, uid, studentid)
+✓ QUIZ ID column (usually: quiz, quizid, instance, examid)
+✓ STATUS column (usually: state, status, attemptstate)
+✓ ATTEMPT NUMBER column (usually: attempt, attemptnum, trynum)
+✓ TIME column (usually: timemodified, created, timestart)
+
+
+STEP 3: BUILD YOUR QUERY
+-------------------------
+Template:
+SELECT id, [STATUS_COLUMN] AS attempt_status, [ATTEMPT_COLUMN] AS attempt_number 
+FROM {TABLE_NAME} 
+WHERE [USERID_COLUMN] = :userid AND [QUIZID_COLUMN] = :quizid 
+ORDER BY [TIME_COLUMN] DESC 
+LIMIT 1
+
+Replace [BRACKETS] with your actual column names.
+
+Example:
+SELECT id, state AS attempt_status, attempt AS attempt_number 
+FROM {customquiz_attempts} 
+WHERE userid = :userid AND quizid = :quizid 
+ORDER BY timemodified DESC 
+LIMIT 1
+
+
+STEP 4: FORMAT FOR MOODLE
+--------------------------
+Add module name at the start with pipe separator:
+
+customquiz|SELECT id, state AS attempt_status, attempt AS attempt_number FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+
+
+STEP 5: ADD TO CONFIGURATION
+-----------------------------
+1. Go to: Site Administration → Plugins → Local plugins → Proctorio Moodle Selectors
+2. Find: "Custom Quiz SQL Queries" section
+3. Paste your line
+4. Save changes
+5. Purge all caches (Site Administration → Development → Purge all caches)
+
+
+READY-TO-USE EXAMPLES
+---------------------
+
+Example 1: Standard columns
+customquiz|SELECT id, status AS attempt_status, attempt AS attempt_number FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+
+Example 2: Different column names (uid, examid)
+examquiz|SELECT id, state AS attempt_status, trynum AS attempt_number FROM {examquiz_tries} WHERE uid = :userid AND examid = :quizid ORDER BY created DESC LIMIT 1
+
+Example 3: No attempt number column (count instead)
+myquiz|SELECT id, state AS attempt_status, (SELECT COUNT(*) FROM {myquiz_attempts} WHERE userid = :userid AND quizid = :quizid) AS attempt_number FROM {myquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+
+Example 4: Multiple quiz types
+customquiz|SELECT id, status AS attempt_status, attempt AS attempt_number FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid ORDER BY timemodified DESC LIMIT 1
+examquiz|SELECT id, state AS attempt_status, trynum AS attempt_number FROM {examquiz_tries} WHERE uid = :userid AND examid = :quizid ORDER BY created DESC LIMIT 1
+
+
+COMMON MISTAKES TO AVOID
+-------------------------
+✗ Forgetting :userid or :quizid placeholders
+✗ Not using AS attempt_status and AS attempt_number aliases
+✗ Using mdl_ prefix (use {tablename} instead)
+✗ Missing ORDER BY and LIMIT 1
+✗ Wrong column names (check with DESCRIBE)
+✗ Forgetting to clear cache after changes
+
+
+TESTING YOUR CONFIGURATION
+---------------------------
+1. Add configuration line
+2. Save settings
+3. Clear Moodle cache
+4. Have a user attempt the quiz
+5. Check if attempt data is recorded correctly
+6. Enable debugging to see any SQL errors
+
+
+TROUBLESHOOTING
+---------------
+Query not working?
+→ Check Moodle debug logs
+→ Verify table name: SHOW TABLES LIKE '%yourmodule%';
+→ Verify columns: DESCRIBE mdl_yourtable;
+→ Test query with real values in database first
+→ Check for typos in aliases
+
+No attempts returned?
+→ Verify WHERE clause matches your columns
+→ Check data exists: SELECT * FROM mdl_yourtable LIMIT 1;
+→ Check userid and quizid values are correct
+
+Error messages?
+→ "must return attempt_status and attempt_number aliases" = Add/fix aliases
+→ "Custom query execution failed" = Check SQL syntax
+→ Enable debugging in Moodle to see detailed errors
+
+
+NEED MORE HELP?
+---------------
+See these detailed guides:
+- SQL_QUERY_GUIDE.md = Full documentation with examples
+- QUERY_TEMPLATES.txt = Copy-paste templates
+- MIGRATION_GUIDE.md = Convert from old format
+
+
+REQUIREMENTS CHECKLIST
+----------------------
+✓ Must use :userid placeholder
+✓ Must use :quizid placeholder  
+✓ Must have AS attempt_status alias
+✓ Must have AS attempt_number alias
+✓ Use {tablename} syntax (not mdl_tablename)
+✓ Include ORDER BY for correct sorting
+✓ Include LIMIT 1 for best performance
+✓ One line per quiz type
+✓ Use | to separate modname from SQL
+
+
+REMEMBER
+--------
+• Standard quiz and adaptivequiz work automatically
+• Test your SQL query in database first
+• Clear cache after configuration changes
+• Enable debugging to see errors
+• Lines starting with # are comments
+
+===============================================================================
