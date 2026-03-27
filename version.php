@@ -28,4 +28,4 @@ $plugin->component = 'local_proctorio';
 $plugin->version   = 2024122506;
 $plugin->requires  = 2020061500;
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '3.4.1';
+$plugin->release   = '10.49.534';
