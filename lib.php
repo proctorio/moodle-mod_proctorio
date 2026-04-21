@@ -15,12 +15,14 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains user badge class for displaying a badge issued to a user.
+ * Core library functions for the Proctorio local plugin.
  *
  * @package   local_proctorio
  * @copyright 2025 Proctorio <support@proctorio.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+defined('MOODLE_INTERNAL') || die();
 
 /**
  * Fetch all candidate selectors.
@@ -38,7 +40,7 @@ function local_proctorio_fetch_selectors($type) {
     $start = $type == "student" ? 8 : 10;
     // Filter only candidate selectors.
     foreach ($all as $key => $value) {
-        if (str_starts_with($key, "{$type}_") && !empty($value)) {
+        if (strpos($key, "{$type}_") === 0 && !empty($value)) {
             $formatedkey = substr($key, $start);
             $selectors->$formatedkey = $value;
         }
