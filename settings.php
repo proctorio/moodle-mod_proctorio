@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains user badge class for displaying a badge issued to a user.
+ * Admin settings page for configuring CSS selectors and custom SQL queries.
  *
  * @package   local_proctorio
  * @copyright 2025 Proctorio <support@proctorio.com>
@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
-    $settings = new admin_settingpage('local_proctorio', 'Proctorio Moodle Selectors');
+    $settings = new admin_settingpage('local_proctorio', get_string('pluginname', 'local_proctorio'));
 
     $ADMIN->add('localplugins', $settings);
 
@@ -61,7 +61,7 @@ if ($hassiteconfig) {
         local_proctorio_add_selector_group(
             $settings,
             'student',
-            "Candidate Selectors",
+            get_string('candidateselectorstitle', 'local_proctorio'),
             get_string('candidate_heading', 'local_proctorio'),
             $candidatefields
         );
@@ -96,7 +96,7 @@ if ($hassiteconfig) {
         local_proctorio_add_selector_group(
             $settings,
             'professor',
-            "Professor Selectors",
+            get_string('professorselectorstitle', 'local_proctorio'),
             get_string('professor_heading', 'local_proctorio'),
             $professorfields
         );

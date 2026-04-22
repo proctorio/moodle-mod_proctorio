@@ -15,42 +15,51 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains user badge class for displaying a badge issued to a user.
+ * AJAX endpoint returning the current user's last quiz attempt status as JSON.
  *
  * @package   local_proctorio
  * @copyright 2025 Proctorio <support@proctorio.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+define('AJAX_SCRIPT', true);
 require_once('../../config.php');
 require_once($CFG->libdir . '/gradelib.php');
-require_once($CFG->dirroot . '/local/proctorio/classes/attempt_fetcher.php');
 
 require_login();
 $context = context_system::instance();
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/proctorio/quizattemptinfo.php'));
-$PAGE->set_heading("quizinfo");
+$PAGE->set_heading(get_string('pluginname', 'local_proctorio'));
 
 // Headers for JSON response.
 header('Content-Type: application/json');
 
 try {
-    // Fetch parameters.
     global $USER, $DB;
-    $userid = $USER->id;
-    $quizid  = required_param('cmid', PARAM_INT);
-    $modname = optional_param('modname', '', PARAM_PLUGIN);
 
-    if ($_SERVER['HTTP_X_REQUESTED_WITH'] != 'XMLHttpRequest' || !isloggedin()) {
+    if ($_SERVER['HTTP_X_REQUESTED_WITH'] !== 'XMLHttpRequest' || !isloggedin()) {
         http_response_code(404);
-        header('Content-Type: application/json');
         echo json_encode([
             'status' => 'error',
             'message' => 'You must be loggedin.',
         ]);
         exit;
     }
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        http_response_code(405);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Only GET method is allowed.',
+        ]);
+        exit;
+    }
+
+    // Fetch parameters after access checks.
+    $userid  = $USER->id;
+    $quizid  = required_param('cmid', PARAM_INT);
+    $modname = optional_param('modname', '', PARAM_PLUGIN);
 
     // Validate user exists.
     if (!core_user::is_real_user($userid)) {
@@ -62,17 +71,7 @@ try {
         exit;
     }
 
-    if ($_SERVER["REQUEST_METHOD"] !== "GET") {
-        http_response_code(405);
-        header('Content-Type: application/json');
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Only GET method is allowed.',
-        ]);
-        exit;
-    }
-
-    // Use attempt_fetcher class to get data.
+    // Use attempt_fetcher class to get data (autoloaded from classes/).
     $attempt = \local_proctorio\attempt_fetcher::get_last_attempt($userid, $quizid, $modname);
 
     if (!$attempt) {

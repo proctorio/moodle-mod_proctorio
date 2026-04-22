@@ -15,13 +15,14 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains user badge class for displaying a badge issued to a user.
+ * AJAX endpoint returning professor CSS selector configuration as JSON.
  *
  * @package   local_proctorio
  * @copyright 2025 Proctorio <support@proctorio.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+define('AJAX_SCRIPT', true);
 require_once('../../config.php');
 require_once('lib.php');
 
@@ -30,7 +31,7 @@ require_login();
 $context = context_system::instance();
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/proctorio/fetchprofessorselectors.php'));
-$PAGE->set_heading("proctorio professor selectors");
+$PAGE->set_heading(get_string('pluginname', 'local_proctorio'));
 
 if ($_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest' && isloggedin()) {
     try {
@@ -47,6 +48,7 @@ if ($_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest' && isloggedin()) {
     }
     exit;
 } else {
-    $redirecturl = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : new moodle_url('/');
+    $referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+    $redirecturl = (strpos($referer, $CFG->wwwroot) === 0) ? $referer : new moodle_url('/');
     redirect($redirecturl);
 }

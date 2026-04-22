@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin version and other metadata.
+ * Plugin capability definitions.
  *
  * @package   local_proctorio
  * @copyright 2025 Proctorio <support@proctorio.com>
@@ -24,9 +24,28 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'local_proctorio';
-$plugin->version   = 2024122506;
-$plugin->requires  = 2020061500;
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.3.0';
-$plugin->supported = [39, 502];
+$capabilities = [
+
+    // Allows viewing a student's own quiz attempt data via the API.
+    'local/proctorio:viewattemptdata' => [
+        'captype'      => 'read',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes'   => [
+            'student'        => CAP_ALLOW,
+            'teacher'        => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager'        => CAP_ALLOW,
+        ],
+    ],
+
+    // Allows viewing the enrolled course roster via the API.
+    'local/proctorio:viewroster' => [
+        'captype'      => 'read',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes'   => [
+            'teacher'        => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager'        => CAP_ALLOW,
+        ],
+    ],
+];

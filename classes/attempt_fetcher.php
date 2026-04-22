@@ -15,12 +15,14 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains user badge class for displaying a badge issued to a user.
+ * Attempt fetcher class for retrieving quiz attempt data across module types.
  *
  * @package   local_proctorio
  * @copyright 2025 Proctorio <support@proctorio.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+defined('MOODLE_INTERNAL') || die();
 
 namespace local_proctorio;
 
