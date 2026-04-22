@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains user badge class for displaying a badge issued to a user.
+ * English language strings for the Proctorio local plugin.
  *
  * @package   local_proctorio
  * @copyright 2025 Proctorio <support@proctorio.com>
@@ -69,7 +69,15 @@ $string["page_navbar"] = "Page Navbar";
 $string['page_navbar_help'] = "Try to identify component that holds information about your current path. For example <b>Dashboard &#47; My courses &#47; MT &#47; Ext &#47; Multichoice question</b> and copy selector of that div element";
 $string['page_wrapper'] = "Page wrapper";
 $string['page_wrapper_help'] = "Try to look at one of the first div elements after body tag, and element that is wrapper for the whole page is our element, copy its selector.";
-$string["pluginname"] = "Proctorio Selectors";
+$string['candidateselectorstitle'] = 'Candidate Selectors';
+$string['pluginname'] = 'Proctorio Selectors';
+$string['professorselectorstitle'] = 'Professor Selectors';
+$string['privacy:metadata:proctorio'] = 'Proctorio receives user and quiz attempt data via this plugin\'s API endpoints when the Proctorio browser extension makes requests.';
+$string['privacy:metadata:proctorio:userid'] = 'The user ID is transmitted to identify the student within Proctorio.';
+$string['privacy:metadata:proctorio:fullname'] = 'The full name is transmitted to identify the student within Proctorio.';
+$string['privacy:metadata:proctorio:email'] = 'The email address is transmitted to identify the student within Proctorio.';
+$string['privacy:metadata:proctorio:attemptstate'] = 'The quiz attempt state (e.g. finished, inprogress) is transmitted to enable exam monitoring.';
+$string['privacy:metadata:proctorio:attemptnumber'] = 'The attempt number is transmitted to track exam progress within Proctorio.';
 $string["process_attempt_page"] = "Process Attempt Page";
 $string["process_attempt_page_help"] = "Identify the path from the URL of the page where users end their quiz attempt.";
 $string["professor_heading"] = "Settings for professor-side CSS selectors.";
