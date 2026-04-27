@@ -22,6 +22,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['pluginname'] = 'Proctorio';
+
 $string['add_quiz'] = 'Add Quiz';
 $string['add_quiz_help'] = "Copy the path part of your Moodle URL. For example, when you want to create a new quiz, in your URL you will have <b>add=quiz</b> part, copy the value after <b>=</b> and paste into our input field. Example https://moodle/course/modedit.php?<b>add=quiz</b>&type&course=2&section=2&return=0&beforemod=0";
 $string["breadcrumb"] = "Breadcrumb";

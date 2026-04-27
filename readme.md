@@ -125,9 +125,9 @@ SELECT * FROM mdl_yourquiz_attempts WHERE userid = 2 LIMIT 1;
 ```
 
 #### Additional Documentation
-- `SQL_QUERY_GUIDE.md` - Comprehensive guide with detailed examples
-- `QUERY_TEMPLATES.txt` - Ready-to-use templates for common scenarios
-- `QUICKSTART.txt` - Quick reference guide
+- `docs/SQL_QUERY_GUIDE.md` - Comprehensive guide with detailed examples
+- `docs/QUERY_TEMPLATES.txt` - Ready-to-use templates for common scenarios
+- `docs/QUICKSTART.txt` - Quick reference guide
 
 ## API Endpoints
 
