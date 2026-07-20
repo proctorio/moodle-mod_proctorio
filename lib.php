@@ -23,6 +23,102 @@
  */
 
 /**
+ * Log a caught exception's real message server-side and return a generic message that
+ * is safe to send back to an HTTP client.
+ *
+ * Exception messages (especially from dml_exception) can carry SQL, table, or schema
+ * details that have no business leaving the server (END-01). The real message still goes
+ * to the server's error log - visible to admins with server access, never to the caller.
+ *
+ * @param \Throwable $e The caught exception
+ * @param string $endpoint Short label identifying which endpoint logged this, for grepping
+ * @return string Generic, client-safe message
+ */
+function local_proctorio_log_and_get_client_message(\Throwable $e, string $endpoint): string {
+    error_log("local_proctorio ({$endpoint}): " . $e->getMessage());
+
+    return 'An error occurred while processing your request.';
+}
+
+/**
+ * Build the enrolled-user roster for a course, enforcing the plugin's own
+ * authorization rules rather than a generic core capability.
+ *
+ * Requires local/proctorio:viewroster in the course context, restricts the
+ * result to the caller's own groups when the course uses separate groups
+ * and the caller lacks moodle/site:accessallgroups, and only reveals a
+ * user's email address when Moodle's own visibility rules for that field
+ * (maildisplay, or moodle/course:useremail) permit it.
+ *
+ * @param stdClass $course Full course record (must include groupmode/groupmodeforce).
+ * @return array[] List of ['id' => int, 'fullname' => string, 'email' => string|null].
+ */
+function local_proctorio_get_course_roster(stdClass $course): array {
+    global $USER;
+
+    $context = context_course::instance($course->id);
+    require_capability('local/proctorio:viewroster', $context);
+
+    $userfields = 'u.id, u.firstname, u.lastname, u.firstnamephonetic, u.lastnamephonetic, '
+        . 'u.middlename, u.alternatename, u.email, u.maildisplay';
+
+    $groupmode = groups_get_course_groupmode($course);
+    if ($groupmode == SEPARATEGROUPS && !has_capability('moodle/site:accessallgroups', $context)) {
+        $users = [];
+        foreach (array_keys(groups_get_all_groups($course->id, $USER->id)) as $groupid) {
+            // Union by key: a user in several of the caller's groups must only appear once.
+            $users += get_enrolled_users($context, '', $groupid, $userfields);
+        }
+    } else {
+        $users = get_enrolled_users($context, '', 0, $userfields);
+    }
+
+    $canseeemail = has_capability('moodle/course:useremail', $context);
+
+    $roster = [];
+    foreach ($users as $user) {
+        // Maildisplay 0 = hidden from everyone but the user themself and staff with the capability above.
+        $showemail = $canseeemail || (int)$user->id === (int)$USER->id || (int)$user->maildisplay !== 0;
+
+        $roster[] = [
+            'id' => (int)$user->id,
+            'fullname' => fullname($user),
+            'email' => $showemail ? $user->email : null,
+        ];
+    }
+
+    return $roster;
+}
+
+/**
+ * Resolve the current user's last attempt for a quiz-like course module.
+ *
+ * Enforces enrolment and activity visibility (require_login with $cm) and the plugin's
+ * own local/proctorio:viewattemptdata capability before ever calling attempt_fetcher.
+ * The module name is deliberately never taken from a caller - see SEG-03 - it is always
+ * resolved from the course module itself by attempt_fetcher::get_last_attempt().
+ *
+ * @param int $cmid Course module ID of the quiz-like activity
+ * @return array|null Attempt data (attempt_status, attempt_number), or null if none found
+ */
+function local_proctorio_get_attempt_info(int $cmid): ?array {
+    global $USER;
+
+    $cm = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
+    $course = get_course($cm->course);
+
+    // Enforces enrolment and activity visibility for the current user. This is an API
+    // function with no page of its own to redirect to, so failures must throw rather
+    // than attempt a header redirect.
+    require_login($course, false, $cm, true, true);
+
+    $modcontext = context_module::instance($cm->id);
+    require_capability('local/proctorio:viewattemptdata', $modcontext);
+
+    return \local_proctorio\attempt_fetcher::get_last_attempt($USER->id, $cmid);
+}
+
+/**
  * Fetch all candidate selectors.
  *
  * @param string $type Type of configuration - student/professor.

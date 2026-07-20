@@ -43,26 +43,19 @@ class attempt_fetcher {
      * Get the last attempt for a user on a specific quiz.
      *
      * This method retrieves the most recent quiz attempt for a given user and course module.
-     * It automatically detects the quiz type and uses the appropriate query strategy.
+     * The module name and quiz instance ID are always resolved directly from the course
+     * module ID. There is deliberately no way for a caller to supply/override the module
+     * name: doing so would let one module's instance ID be paired with a different
+     * module's query strategy (SEG-03 - module identity confusion).
      *
      * @param int $userid The ID of the user whose attempt to fetch
      * @param int $cmid The course module ID of the quiz
-     * @param string $modname Optional module name (e.g., 'quiz', 'adaptivequiz'). If empty, auto-detected.
-     * @return array|null Array containing attempt data (id, attemptstatus, attempt_number) or null if not found
+     * @return array|null Array containing attempt data (attempt_status, attempt_number) or null if not found
      */
-    public static function get_last_attempt(int $userid, int $cmid, string $modname = '') {
-        global $DB;
-
+    public static function get_last_attempt(int $userid, int $cmid): ?array {
         $data = self::detect_module_and_quizid_from_instance($cmid);
-        if (!$modname) {
-            // Try to detect module from quizid.
-            $modname = $data['modname'];
-            $quizid = $data['instanceid'];
-        } else {
-            $quizid = $data["instanceid"];
-        }
 
-        return self::get_quiz_attempt($modname, $userid, $quizid);
+        return self::get_quiz_attempt($data['modname'], $userid, $data['instanceid']);
     }
 
     /**
@@ -119,7 +112,8 @@ class attempt_fetcher {
      * Requirements:
      * - Query must use :userid and :quizid placeholders in WHERE clause
      * - Query must have aliases: attempt_status and attempt_number
-     * - Query should ORDER BY and LIMIT to get the last attempt
+     * - Query should ORDER BY to get the last attempt; any LIMIT/OFFSET is stripped and
+     *   ignored - execute_custom_query() always imposes its own limit of one row (DIS-01)
      *
      * @param string $modname Module name to look up (e.g., 'customquiz', 'examquiz')
      * @return string|null SQL query string if found, null if no configuration exists for this module
@@ -139,6 +133,58 @@ class attempt_fetcher {
     }
 
     /**
+     * Remove SQL comments from a query.
+     *
+     * Comments are stripped before the query is validated or executed so that required
+     * tokens (placeholders/aliases) cannot be satisfied by text hidden inside a comment
+     * while the real, executed statement does something else.
+     *
+     * @param string $sql Raw SQL text
+     * @return string SQL text with block, "--" and "#" comments removed
+     */
+    private static function strip_sql_comments(string $sql): string {
+        $sql = preg_replace('#/\*.*?\*/#s', ' ', $sql);
+        $sql = preg_replace('/--.*$/m', '', $sql);
+        $sql = preg_replace('/#.*$/m', '', $sql);
+
+        return trim($sql);
+    }
+
+    /**
+     * Check that a (comment-stripped) query is a single, plain SELECT statement.
+     *
+     * This blocks stacked statements and data-modifying/administrative statements from
+     * being smuggled in as a "custom quiz" query. It does not, and cannot, guarantee that
+     * a SELECT only reads tables/columns the plugin intends - admins configuring this
+     * setting are trusted to the same degree as anyone else holding moodle/site:config.
+     *
+     * @param string $strippedsql Query text with comments already removed
+     * @return bool True if the statement looks like a single safe SELECT
+     */
+    private static function is_single_safe_select(string $strippedsql): bool {
+        if (!preg_match('/^SELECT\b/i', $strippedsql)) {
+            return false;
+        }
+
+        // Reject stacked/multiple statements.
+        if (strpos($strippedsql, ';') !== false) {
+            return false;
+        }
+
+        // Reject data-modifying, DDL, and administrative keywords anywhere in the statement.
+        $blockedkeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE',
+            'GRANT', 'REVOKE', 'MERGE', 'REPLACE', 'EXEC', 'EXECUTE', 'CALL',
+            'OUTFILE', 'DUMPFILE', 'LOAD_FILE'];
+        foreach ($blockedkeywords as $keyword) {
+            if (preg_match('/\b' . $keyword . '\b/i', $strippedsql)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Parse line-by-line quiz configurations from settings text.
      *
      * Parses a multi-line configuration string where each line represents one quiz type.
@@ -148,12 +194,14 @@ class attempt_fetcher {
      * - Lines starting with # or // are treated as comments and ignored
      * - Empty lines are ignored
      * - Each line must have exactly 2 pipe-separated values (modname|SQL)
+     * - SQL query must be a single SELECT statement (no stacked statements, no
+     *   write/DDL/admin keywords) once its own comments are stripped
      * - SQL query must contain :userid and :quizid placeholders
      * - SQL query must have aliases: attempt_status and attempt_number
      *
      * @param string $configtext Multi-line configuration text from settings
      * @param string $modname Module name to search for in the configuration
-     * @return string|null SQL query string if found and valid, null otherwise
+     * @return string|null Comment-stripped SQL query string if found and valid, null otherwise
      */
     private static function parse_quiz_configurations(string $configtext, string $modname): ?string {
         $lines = explode("\n", $configtext);
@@ -180,14 +228,25 @@ class attempt_fetcher {
             $sqlquery = trim($parts[1]);
 
             // Check if this is the module we're looking for.
-            if ($linemodname === $modname) {
-                // Validate query has required placeholders and aliases.
-                if (!empty($sqlquery) &&
-                    stripos($sqlquery, ':userid') !== false &&
-                    stripos($sqlquery, ':quizid') !== false &&
-                    stripos($sqlquery, 'attempt_status') !== false &&
-                    stripos($sqlquery, 'attempt_number') !== false) {
-                    return $sqlquery;
+            if ($linemodname === $modname && !empty($sqlquery)) {
+                $stripped = self::strip_sql_comments($sqlquery);
+
+                if (!self::is_single_safe_select($stripped)) {
+                    debugging(
+                        "Custom quiz configuration for '{$modname}' was rejected: " .
+                        'must be a single SELECT statement with no write/DDL keywords.',
+                        DEBUG_DEVELOPER
+                    );
+                    continue;
+                }
+
+                // Validate query has required placeholders and aliases (post comment-strip,
+                // so they can't be satisfied by text hidden inside a comment).
+                if (stripos($stripped, ':userid') !== false &&
+                    stripos($stripped, ':quizid') !== false &&
+                    stripos($stripped, 'attempt_status') !== false &&
+                    stripos($stripped, 'attempt_number') !== false) {
+                    return $stripped;
                 }
             }
         }
@@ -196,29 +255,48 @@ class attempt_fetcher {
     }
 
     /**
+     * Remove a trailing LIMIT/OFFSET clause from a query.
+     *
+     * The row limit is always imposed by execute_custom_query() itself (via
+     * get_records_sql()'s $limitnum), never by the configured query text - so any
+     * trailing LIMIT an admin wrote is stripped first to avoid colliding with it
+     * (some drivers would otherwise end up with two LIMIT clauses, which is invalid SQL).
+     *
+     * @param string $sql SQL text (comments already stripped)
+     * @return string SQL text with a trailing LIMIT/OFFSET clause removed, if present
+     */
+    private static function strip_trailing_limit_clause(string $sql): string {
+        return rtrim(preg_replace('/\s*\bLIMIT\s+\d+(?:\s*,\s*\d+|\s+OFFSET\s+\d+)?\s*$/i', '', $sql));
+    }
+
+    /**
      * Execute custom SQL query with parameter binding.
      *
      * This method executes a user-provided SQL query with automatic parameter binding.
      * The query must include :userid and :quizid placeholders and must return columns
-     * with aliases: attempt_status and attempt_number.
+     * with aliases: attempt_status and attempt_number. At most one row is ever fetched,
+     * via a limit imposed by this method - not by the configured query (DIS-01).
      *
      * @param string $sqlquery The SQL query string with :userid and :quizid placeholders
      * @param int $userid The user ID to bind to :userid placeholder
      * @param int $quizid The quiz instance ID to bind to :quizid placeholder
-     * @return array|null Array with keys: id, attempt_status, attempt_number. Returns null if no attempt found.
+     * @return array|null Array with keys: attempt_status, attempt_number. Returns null if no attempt found.
      * @throws \dml_exception If query execution fails
      */
     private static function execute_custom_query(string $sqlquery, int $userid, int $quizid): ?array {
         global $DB;
 
         try {
+            $sqlquery = self::strip_trailing_limit_clause($sqlquery);
+
             // Moodle requires unique parameter names for each placeholder occurrence.
             // Replace duplicate placeholders with numbered versions.
             $processedquery = self::process_query_placeholders($sqlquery);
             $params = self::build_params_for_query($processedquery, $userid, $quizid);
 
-            // Execute the query with bound parameters.
-            $attempt = $DB->get_record_sql($processedquery, $params);
+            // Fetch at most one row - a code-imposed limit, never left to the configured query.
+            $records = $DB->get_records_sql($processedquery, $params, 0, 1);
+            $attempt = $records ? reset($records) : false;
 
             if ($attempt) {
                 // Extract required fields from the result.
@@ -234,7 +312,7 @@ class attempt_fetcher {
             }
         } catch (\dml_exception $e) {
             // Log the error and return null.
-            debugging('Custom query execution failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            debugging('Custom query execution failed', DEBUG_DEVELOPER);
             return null;
         }
 

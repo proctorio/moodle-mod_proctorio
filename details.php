@@ -57,7 +57,7 @@ if ($_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest' && isloggedin()) {
     } catch (Exception $e) {
         header("Content-type: application/json");
         $code = $e->getCode();
-        echo json_encode(['error' => $e->getMessage()]);
+        echo json_encode(['error' => local_proctorio_log_and_get_client_message($e, 'details')]);
         http_response_code($code);
     }
     exit;

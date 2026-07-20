@@ -44,7 +44,7 @@ if ($_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest' && isloggedin()) {
         header("Content-type: application/json");
         $code = $e->getCode();
         http_response_code($code);
-        echo json_encode(['error' => $e->getMessage()]);
+        echo json_encode(['error' => local_proctorio_log_and_get_client_message($e, 'fetchprofessorselectors')]);
     }
     exit;
 } else {

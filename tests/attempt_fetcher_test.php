@@ -147,6 +147,77 @@ class attempt_fetcher_test extends \advanced_testcase {
     }
 
     // -------------------------------------------------------------------------
+    // Parse_quiz_configurations - SEG-02: single safe SELECT enforcement.
+
+    public function test_parse_quiz_configurations_allows_subquery_for_attempt_number(): void {
+        // Same shape as the documented adaptivequiz example in the settings help text -
+        // a SELECT containing a nested SELECT must still be accepted.
+        $sql = 'SELECT attemptstate AS attempt_status,'
+             . ' (SELECT COUNT(*) FROM {adaptivequiz_attempt} WHERE userid = :userid AND instance = :quizid)'
+             . ' AS attempt_number'
+             . ' FROM {adaptivequiz_attempt} WHERE userid = :userid AND instance = :quizid'
+             . ' ORDER BY timemodified DESC LIMIT 1';
+        $config = "adaptivequiz|$sql";
+
+        $result = $this->call('parse_quiz_configurations', $config, 'adaptivequiz');
+        $this->assertSame($sql, $result);
+    }
+
+    public function test_parse_quiz_configurations_rejects_write_statement_hidden_in_comment(): void {
+        // Regression test for SEG-02: required tokens hidden in a trailing comment must
+        // not satisfy validation while the real, executed statement is a write statement.
+        $config = "customquiz|UPDATE {user} SET password = 'x' WHERE id = 1"
+                . ' -- :userid :quizid attempt_status attempt_number';
+
+        $result = $this->call('parse_quiz_configurations', $config, 'customquiz');
+        $this->assertNull($result);
+    }
+
+    public function test_parse_quiz_configurations_rejects_stacked_statements(): void {
+        $config = 'customquiz|SELECT id, status AS attempt_status, attempt AS attempt_number'
+                . ' FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid LIMIT 1;'
+                . ' DELETE FROM {customquiz_attempts}';
+
+        $result = $this->call('parse_quiz_configurations', $config, 'customquiz');
+        $this->assertNull($result);
+    }
+
+    public function test_parse_quiz_configurations_rejects_query_not_starting_with_select(): void {
+        $config = 'customquiz|DELETE FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid'
+                . ' /* attempt_status attempt_number */';
+
+        $result = $this->call('parse_quiz_configurations', $config, 'customquiz');
+        $this->assertNull($result);
+    }
+
+    public function test_parse_quiz_configurations_rejects_blocked_keyword_in_select(): void {
+        $config = 'customquiz|SELECT id, status AS attempt_status, attempt AS attempt_number'
+                . ' FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid'
+                . ' AND (SELECT DROP)';
+
+        $result = $this->call('parse_quiz_configurations', $config, 'customquiz');
+        $this->assertNull($result);
+    }
+
+    public function test_parse_quiz_configurations_strips_comments_from_accepted_query(): void {
+        $config = 'customquiz|SELECT id, status AS attempt_status, attempt AS attempt_number'
+                . ' FROM {customquiz_attempts} /* trailing note */ WHERE userid = :userid AND quizid = :quizid LIMIT 1';
+
+        $result = $this->call('parse_quiz_configurations', $config, 'customquiz');
+        $this->assertNotNull($result);
+        $this->assertStringNotContainsString('trailing note', $result);
+    }
+
+    public function test_parse_quiz_configurations_does_not_false_positive_on_keyword_substrings(): void {
+        // "timeupdated" contains "update" as a prefix but must not trip the UPDATE keyword check.
+        $config = 'customquiz|SELECT id, status AS attempt_status, timeupdated AS attempt_number'
+                . ' FROM {customquiz_attempts} WHERE userid = :userid AND quizid = :quizid LIMIT 1';
+
+        $result = $this->call('parse_quiz_configurations', $config, 'customquiz');
+        $this->assertNotNull($result);
+    }
+
+    // -------------------------------------------------------------------------
     // Process_query_placeholders.
 
     public function test_process_query_placeholders_single_occurrences(): void {
@@ -244,6 +315,52 @@ class attempt_fetcher_test extends \advanced_testcase {
     }
 
     // -------------------------------------------------------------------------
+    // Execute_custom_query / strip_trailing_limit_clause - DIS-01: code-imposed row limit.
+
+    public function test_execute_custom_query_bounds_result_to_one_row_when_query_has_no_limit(): void {
+        $usera = $this->getDataGenerator()->create_user();
+        $userb = $this->getDataGenerator()->create_user();
+
+        // Deliberately no LIMIT clause, and a condition matching two rows.
+        $sql = "SELECT id, 'finished' AS attempt_status, 1 AS attempt_number"
+             . ' FROM {user} WHERE id IN (:userid, :quizid)';
+
+        $result = $this->call('execute_custom_query', $sql, $usera->id, $userb->id);
+
+        // Must return exactly one result rather than throwing on multiple matching rows.
+        $this->assertIsArray($result);
+        $this->assertSame('finished', $result['attempt_status']);
+    }
+
+    public function test_execute_custom_query_strips_admin_supplied_limit(): void {
+        $user = $this->getDataGenerator()->create_user();
+
+        // A generous admin-written LIMIT must not collide with the code-imposed one.
+        $sql = "SELECT id, 'inprogress' AS attempt_status, 5 AS attempt_number"
+             . ' FROM {user} WHERE id = :userid AND id != :quizid LIMIT 100';
+
+        $result = $this->call('execute_custom_query', $sql, $user->id, 0);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('inprogress', $result['attempt_status']);
+    }
+
+    public function test_strip_trailing_limit_clause_removes_limit_and_offset_variants(): void {
+        $this->assertSame(
+            'SELECT * FROM {t} WHERE userid = :userid',
+            $this->call('strip_trailing_limit_clause', 'SELECT * FROM {t} WHERE userid = :userid LIMIT 1')
+        );
+        $this->assertSame(
+            'SELECT * FROM {t} WHERE userid = :userid',
+            $this->call('strip_trailing_limit_clause', 'SELECT * FROM {t} WHERE userid = :userid LIMIT 0, 5')
+        );
+        $this->assertSame(
+            'SELECT * FROM {t} WHERE userid = :userid',
+            $this->call('strip_trailing_limit_clause', 'SELECT * FROM {t} WHERE userid = :userid LIMIT 5 OFFSET 10')
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // Get_attempt_by_module.
 
     public function test_get_attempt_by_module_quiz_returns_null_when_no_attempt(): void {
@@ -291,6 +408,24 @@ class attempt_fetcher_test extends \advanced_testcase {
 
     // -------------------------------------------------------------------------
     // Get_last_attempt (public API).
+
+    public function test_get_last_attempt_ignores_any_extra_modname_argument(): void {
+        // Regression test for SEG-03: get_last_attempt() only declares (userid, cmid) - PHP
+        // silently ignores extra positional arguments rather than erroring on them, so a
+        // stray third argument must have zero effect. The resolved module/instance must
+        // still come entirely from cmid, never from that ignored argument.
+        $course = $this->getDataGenerator()->create_course();
+        $quiz   = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+        $user   = $this->getDataGenerator()->create_user();
+
+        $this->insert_quiz_attempt($quiz->id, $quiz->cmid, $user->id, 'finished', 2);
+
+        $result = attempt_fetcher::get_last_attempt($user->id, $quiz->cmid, 'someothermodule');
+
+        $this->assertIsArray($result);
+        $this->assertEquals('finished', $result['attempt_status']);
+        $this->assertEquals(2, $result['attempt_number']);
+    }
 
     public function test_get_last_attempt_returns_null_when_no_attempt_exists(): void {
         $course = $this->getDataGenerator()->create_course();

@@ -25,6 +25,7 @@
 define('AJAX_SCRIPT', true);
 require_once('../../config.php');
 require_once($CFG->libdir . '/gradelib.php');
+require_once('lib.php');
 
 require_login();
 $context = context_system::instance();
@@ -57,9 +58,8 @@ try {
     }
 
     // Fetch parameters after access checks.
-    $userid  = $USER->id;
-    $quizid  = required_param('cmid', PARAM_INT);
-    $modname = optional_param('modname', '', PARAM_PLUGIN);
+    $userid = $USER->id;
+    $cmid   = required_param('cmid', PARAM_INT);
 
     // Validate user exists.
     if (!core_user::is_real_user($userid)) {
@@ -71,8 +71,9 @@ try {
         exit;
     }
 
-    // Use attempt_fetcher class to get data (autoloaded from classes/).
-    $attempt = \local_proctorio\attempt_fetcher::get_last_attempt($userid, $quizid, $modname);
+    // Resolves the course module itself (never trusting a client-supplied module name -
+    // SEG-03), enforces enrolment/visibility, and requires local/proctorio:viewattemptdata.
+    $attempt = local_proctorio_get_attempt_info($cmid);
 
     if (!$attempt) {
         http_response_code(404);
@@ -91,14 +92,14 @@ try {
     http_response_code(400);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage(),
+        'message' => local_proctorio_log_and_get_client_message($e, 'quizattemptinfo'),
     ]);
     exit;
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage(),
+        'message' => local_proctorio_log_and_get_client_message($e, 'quizattemptinfo'),
     ]);
     exit;
 }

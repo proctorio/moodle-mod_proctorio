@@ -68,12 +68,9 @@ try {
         exit;
     }
 
-    $context = context_course::instance($courseid);
-    require_capability('moodle/course:viewparticipants', $context);
+    $roster = local_proctorio_get_course_roster($course);
 
-    $users = get_enrolled_users($context);
-
-    if (empty($users)) {
+    if (empty($roster)) {
         // No users found.
         http_response_code(200);
         echo json_encode([
@@ -84,14 +81,6 @@ try {
         exit;
     }
 
-    $roster = [];
-    foreach ($users as $user) {
-        $roster[] = [
-            'id' => $user->id,
-            'fullname' => fullname($user),
-            'email' => $user->email,
-        ];
-    }
     http_response_code(200);
     echo json_encode([
         'status' => 'success',
@@ -104,14 +93,14 @@ try {
     http_response_code(400);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage(),
+        'message' => local_proctorio_log_and_get_client_message($e, 'users'),
     ]);
     exit;
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage(),
+        'message' => local_proctorio_log_and_get_client_message($e, 'users'),
     ]);
     exit;
 }

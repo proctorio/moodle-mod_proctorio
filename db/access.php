@@ -42,6 +42,7 @@ $capabilities = [
     'local/proctorio:viewroster' => [
         'captype'      => 'read',
         'contextlevel' => CONTEXT_COURSE,
+        'riskbitmask'  => RISK_PERSONAL,
         'archetypes'   => [
             'teacher'        => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
