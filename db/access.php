@@ -49,4 +49,16 @@ $capabilities = [
             'manager'        => CAP_ALLOW,
         ],
     ],
+
+    // Allows fetching the plugin's non-course-specific CSS selector configuration and
+    // version details via the API. Not course/user data - any authenticated user may
+    // hold this, matching the audience of the Proctorio browser extension.
+    'local/proctorio:viewselectors' => [
+        'captype'      => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes'   => [
+            'guest' => CAP_PREVENT,
+            'user'  => CAP_ALLOW,
+        ],
+    ],
 ];

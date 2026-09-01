@@ -24,9 +24,6 @@
 
 $string['pluginname'] = 'Proctorio';
 
-$string['proctorio:viewattemptdata'] = 'View own quiz attempt data via the Proctorio API';
-$string['proctorio:viewroster'] = 'View the enrolled course roster via the Proctorio API';
-
 $string['add_quiz'] = 'Add Quiz';
 $string['add_quiz_help'] = "Copy the path part of your Moodle URL. For example, when you want to create a new quiz, in your URL you will have <b>add=quiz</b> part, copy the value after <b>=</b> and paste into our input field. Example https://moodle/course/modedit.php?<b>add=quiz</b>&type&course=2&section=2&return=0&beforemod=0";
 $string["breadcrumb"] = "Breadcrumb";
@@ -34,6 +31,7 @@ $string['breadcrumb_help'] = "Try to find a component that holds information abo
 $string["breadcrumb_item"] = "Breadcrumb Item";
 $string['breadcrumb_item_help'] = "Inside previous <b>&lt;ol&gt;</b> element you have <b>&lt;li&gt;</b> tag, copy its class. For example <b>&lt;li class='breadcrumb-item'&gt; &lt;&#47;ol&gt;</b>";
 $string['candidate_heading'] = "Settings for candidate-side CSS selectors.";
+$string['coursenotfound'] = 'Course not found.';
 $string['quiz_configs_heading'] = "Custom Quiz SQL Queries";
 $string['quiz_configs_heading_desc'] = "Write custom SQL queries for quiz modules that are not automatically supported. Standard 'quiz' and 'adaptivequiz' modules work automatically and do not need configuration. Each query must use :userid and :quizid placeholders and return attempt_status and attempt_number aliases.";
 $string['quiz_configurations'] = 'Custom Quiz SQL Queries';
@@ -54,10 +52,13 @@ $string['id_quizpassword'] = 'Id Quiz Password';
 $string["id_quizpassword_help"] = "Locate the HTML input element on your Moodle site where users enter the exam password. Copy the CSS selector for this field and paste it into the form below.";
 $string['id_submitbutton'] = 'Id Submit Button';
 $string['id_submitbutton_help'] = "Click on Preview quiz button that will open the modal where you will have quiz password input field. Try to find <b>&lt;input type='submit' id='id_submitbutton'&gt;</b> element and copy its id selector";
+$string['invalidtype'] = 'Invalid selector type: {$a}. Expected "student" or "professor".';
+$string['invaliduser'] = 'Invalid user.';
 $string['mod_quiz_preflight_form'] = 'Mod Quiz Preflight Form';
 $string['mod_quiz_preflight_form_help'] = "When you click on 'Preview quiz' moodle opens modal page that has quiz password input field. Try to copy id of the form tag from that modal";
 $string['modulename_value'] = 'Modulename Value';
 $string['modulename_value_help'] = "When you want to create a new quiz, or want to edit existing one by visiting the settings page try to find <b>&lt;input type='hidden' name='modulename' value='quiz'&gt;</b> element with the <b>modulename</b> name. When you find it copy the value of the value attribute and paste it to our form";
+$string['mustbeloggedin'] = 'You must be logged in.';
 $string["navbar"] = "Navbar";
 $string['navbar_help'] = "Try to find the nav tag and copy its class, in default moodle default clogin_info_helplass is <b>navbar</b>";
 $string['page'] = 'Page';
@@ -74,6 +75,9 @@ $string["page_navbar"] = "Page Navbar";
 $string['page_navbar_help'] = "Try to identify component that holds information about your current path. For example <b>Dashboard &#47; My courses &#47; MT &#47; Ext &#47; Multichoice question</b> and copy selector of that div element";
 $string['page_wrapper'] = "Page wrapper";
 $string['page_wrapper_help'] = "Try to look at one of the first div elements after body tag, and element that is wrapper for the whole page is our element, copy its selector.";
+$string['noattemptfound'] = 'No attempt found.';
+$string['nousersenrolled'] = 'No users enrolled in this course.';
+$string['onlygetallowed'] = 'Only GET method is allowed.';
 $string['candidateselectorstitle'] = 'Candidate Selectors';
 $string['pluginname'] = 'Proctorio Selectors';
 $string['professorselectorstitle'] = 'Professor Selectors';
@@ -85,6 +89,9 @@ $string['privacy:metadata:proctorio:attemptstate'] = 'The quiz attempt state (e.
 $string['privacy:metadata:proctorio:attemptnumber'] = 'The attempt number is transmitted to track exam progress within Proctorio.';
 $string["process_attempt_page"] = "Process Attempt Page";
 $string["process_attempt_page_help"] = "Identify the path from the URL of the page where users end their quiz attempt.";
+$string['proctorio:viewattemptdata'] = 'View a student\'s own quiz attempt data via the Proctorio API';
+$string['proctorio:viewroster'] = 'View the enrolled course roster via the Proctorio API';
+$string['proctorio:viewselectors'] = 'View the Proctorio CSS selector configuration and version details via the API';
 $string["professor_heading"] = "Settings for professor-side CSS selectors.";
 $string['quiz_access_code'] = "Quiz Access Code";
 $string["quiz_access_code_help"] = "Locate the HTML input element on your Moodle site where users enter the exam password. Copy the CSS selector for this field and paste it into the form below.";
@@ -120,3 +127,5 @@ $string["url_path"] = "Url Path";
 $string['url_path_help'] = "Copy the path part of your Moodle URL. For example, go to any quiz you have and if your URL is <b>https://moodle/mod/quiz/view.php?id=3</b> copy the <b>'mod/quiz'</b> part and obtain us that path";
 $string['user_id'] = 'User ID';
 $string['user_id_help'] = "Specify the database column name that stores the user ID associated with the quiz attempt.";
+$string['usersfetchedsuccessfully'] = 'Enrolled users fetched successfully.';
+$string['versionfilenotfound'] = 'Version file doesn\'t exist.';

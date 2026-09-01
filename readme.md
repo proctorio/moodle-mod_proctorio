@@ -131,90 +131,71 @@ SELECT * FROM mdl_yourquiz_attempts WHERE userid = 2 LIMIT 1;
 
 ## API Endpoints
 
-The plugin provides RESTful API endpoints for integration with external systems.
+The plugin exposes its API as Moodle External Services (`db/services.php` +
+`classes/external/*`), callable via Moodle's core AJAX dispatcher
+(`lib/ajax/service.php`) using the caller's existing session (cookies) and sesskey -
+no separate web service token is required. Each function validates its own
+parameters and capability inside `execute()`.
 
 ### 1. Quiz Attempt Information
 
-**Endpoint**: `/local/proctorio/quizattemptinfo.php`
+**Function**: `local_proctorio_get_attempt_info`
 
-**Method**: GET (AJAX only, requires login)
+**Capability**: `local/proctorio:viewattemptdata` (module context)
 
 **Parameters**:
-- `cmid` (required, integer) - Course module ID
-- `modname` (optional, string) - Module name (e.g., 'quiz', 'adaptivequiz', 'customquiz')
+- `cmid` (required, integer) - Course module ID of the quiz-like activity
 
 **Response**:
 ```json
 {
-  "status": "success",
-  "data": {
-    "attempt_status": "finished",
-    "attempt_number": "3"
-  }
+  "found": true,
+  "attempt_status": "finished",
+  "attempt_number": "3"
 }
 ```
 
-**Error Codes**:
-- `404` - User not logged in or not AJAX request
-- `405` - Invalid request method
-- `400` - Missing parameters or course module not found
-
 ### 2. Course Roster
 
-**Endpoint**: `/local/proctorio/users.php`
+**Function**: `local_proctorio_get_course_roster`
 
-**Method**: GET (requires login)
+**Capability**: `local/proctorio:viewroster` (course context)
 
 **Parameters**:
 - `courseid` (required, integer) - Course ID
 
 **Response**:
 ```json
-{
-  "status": "success",
-  "data": [
-    {
-      "id": "123",
-      "firstname": "John",
-      "lastname": "Doe",
-      "email": "john.doe@example.com"
-    }
-  ]
-}
+[
+  {
+    "id": 123,
+    "fullname": "John Doe",
+    "email": "john.doe@example.com"
+  }
+]
 ```
 
-**Error Codes**:
-- `404` - User not logged in
-- `405` - Invalid request method
-- `400` - Missing courseid parameter
-- `403` - User doesn't have permission to view course
+### 3. CSS Selectors
 
-### 3. Candidate Selectors
+**Function**: `local_proctorio_get_selectors`
 
-**Endpoint**: `/local/proctorio/ajax.php`
+**Capability**: `local/proctorio:viewselectors` (system context)
 
-**Method**: GET (AJAX only, requires login)
+**Parameters**:
+- `type` (required, string) - `"student"` or `"professor"`
 
-**Response**: Array of configured candidate selectors
+**Response**: JSON-encoded array of the configured selectors for that audience.
 
-### 4. Professor Selectors
+### 4. Plugin Details
 
-**Endpoint**: `/local/proctorio/fetchprofessorselectors.php`
+**Function**: `local_proctorio_get_plugin_details`
 
-**Method**: GET (AJAX only, requires login)
-
-**Response**: Array of configured professor selectors
-
-### 5. Plugin Details
-
-**Endpoint**: `/local/proctorio/details.php`
-
-**Method**: GET (AJAX only, requires login)
+**Capability**: `local/proctorio:viewselectors` (system context)
 
 **Response**:
 ```json
 {
-  "pluginversion": "2.3.0",
+  "pluginversion": "2.4.0",
   "moodleversion": "4.1.0"
 }
 ```
@@ -223,32 +204,34 @@ The plugin provides RESTful API endpoints for integration with external systems.
 
 ### JavaScript Integration
 
-**Fetch quiz attempt information**:
+**Fetch quiz attempt information** (via Moodle's `core/ajax` module):
 ```javascript
-fetch('/local/proctorio/quizattemptinfo.php?cmid=123&modname=quiz', {
-  headers: {
-    'X-Requested-With': 'XMLHttpRequest'
+import Ajax from 'core/ajax';
+
+const [attempt] = Ajax.call([
+  { methodname: 'local_proctorio_get_attempt_info', args: { cmid: 123 } }
+]);
+
+attempt.then(data => {
+  if (data.found) {
+    console.log('Attempt status:', data.attempt_status);
+    console.log('Attempt number:', data.attempt_number);
   }
-})
-  .then(response => response.json())
-  .then(data => {
-    if (data.status === 'success') {
-      console.log('Attempt status:', data.data.attempt_status);
-      console.log('Attempt number:', data.data.attempt_number);
-    }
-  });
+});
 ```
 
-**Fetch course roster**:
+**Fetch course roster** (e.g. from outside an AMD module, against
+`lib/ajax/service.php` directly, using the page's own session and sesskey):
 ```javascript
-fetch('/local/proctorio/users.php?courseid=456')
+fetch(`${M.cfg.wwwroot}/lib/ajax/service.php?sesskey=${M.cfg.sesskey}&info=local_proctorio_get_course_roster`, {
+  method: 'POST',
+  credentials: 'same-origin',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify([{ index: 0, methodname: 'local_proctorio_get_course_roster', args: { courseid: 456 } }])
+})
   .then(response => response.json())
-  .then(data => {
-    if (data.status === 'success') {
-      data.data.forEach(user => {
-        console.log(`${user.firstname} ${user.lastname} (${user.email})`);
-      });
-    }
+  .then(([{ data: roster }]) => {
+    roster.forEach(user => console.log(`${user.fullname} (${user.email})`));
   });
 ```
 
@@ -258,24 +241,23 @@ fetch('/local/proctorio/users.php?courseid=456')
 - **Plugin Type**: Local plugin
 - **Component**: `local_proctorio`
 - **Maturity**: MATURITY_STABLE
-- **Current Version**: 2.3.0
+- **Current Version**: 2.4.0
 
 ### Key Components
 - `attempt_fetcher.php` - Class for retrieving quiz attempt data with custom SQL support
-- `lib.php` - Helper functions for selector management
+- `lib.php` - Helper functions for selector management and roster/attempt lookups
 - `settings.php` - Admin configuration interface
-- `ajax.php`, `fetchprofessorselectors.php` - AJAX endpoints
-- `quizattemptinfo.php` - Quiz attempt API
-- `users.php` - Course roster API
-- `details.php` - Version information API
+- `classes/external/*` - External Service functions (the plugin's API surface)
+- `db/services.php` - External Service registration
 
 ### Security Features
 - **Parameter Binding**: All SQL queries use prepared statements with bound parameters
-- **Login Requirements**: All endpoints require authenticated users
-- **AJAX Validation**: Sensitive endpoints verify AJAX requests
-- **Type Safety**: Strict parameter type checking (PARAM_INT, PARAM_PLUGIN, etc.)
+- **Login Requirements**: All external functions require an authenticated session
+- **Capability Checks**: Each `execute()` validates context and requires the
+  capability appropriate to the data it returns (module, course, or system level)
+- **Type Safety**: Strict parameter type checking via `external_value`/`PARAM_*`
 - **SQL Injection Protection**: Automatic placeholder numbering and PDO-based execution
-- **Access Control**: Course permission checks for roster endpoints
+- **Access Control**: Course/module permission checks for roster and attempt endpoints
 
 ### Performance Considerations
 - Queries use `LIMIT 1` for optimal performance

@@ -1,0 +1,31 @@
+This file documents the release history of the local_proctorio plugin.
+
+=== 2.4.0 (2026082500) ===
+
+* Replaced the legacy AJAX endpoints with Moodle External Services (classes/external/*,
+  db/services.php), callable via core/ajax or lib/ajax/service.php:
+  - local_proctorio_get_attempt_info — last quiz attempt for the current user.
+  - local_proctorio_get_course_roster — enrolled course roster.
+  - local_proctorio_get_selectors — candidate/professor CSS selector configuration.
+  - local_proctorio_get_plugin_details — plugin and Moodle version information.
+* Removed the endpoints these replace: ajax.php, fetchprofessorselectors.php, details.php,
+  users.php, quizattemptinfo.php.
+* Added the local/proctorio:viewselectors capability (system context) gating the new
+  selectors/details services.
+* Added missing language strings (capability names, invalidtype, and previously
+  hard-coded AJAX response messages) so all user-facing text goes through get_string().
+
+=== 2.3.0 (2024122506) ===
+
+* Stable release.
+* CSS selector configuration for candidate (student) and professor (instructor) interfaces.
+* Custom SQL query support for non-standard quiz modules via admin settings.
+* REST API endpoints:
+  - /local/proctorio/quizattemptinfo.php — last quiz attempt for the current user.
+  - /local/proctorio/users.php — enrolled course roster.
+  - /local/proctorio/ajax.php — candidate CSS selectors.
+  - /local/proctorio/fetchprofessorselectors.php — professor CSS selectors.
+  - /local/proctorio/details.php — plugin and Moodle version information.
+* Privacy API implementation declaring data shared with Proctorio.
+* Plugin capability definitions (local/proctorio:viewattemptdata, local/proctorio:viewroster).
+* Requires Moodle 3.9 or later.

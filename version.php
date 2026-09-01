@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_proctorio';
-$plugin->version   = 2026072001;
+$plugin->version   = 2026082500;
 $plugin->requires  = 2020061500;
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.3.1';
+$plugin->release   = '2.4.0';
 $plugin->supported = [39, 502];
